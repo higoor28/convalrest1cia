@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ferramentas para a Miss&atilde;o Conval./Rest./Lic. comp./LTS/AO</title>
+  <link rel="icon" type="image/png" href="1cia.png">
+  <link rel="stylesheet" href="styles.css?v=2.4.1">
+</head>
+<body class="auth-locked">
+  <section class="auth-gate" id="authGate" aria-labelledby="auth-title">
+    <div class="auth-card">
+      <img src="1cia.png" alt="" aria-hidden="true">
+      <p class="auth-project-title">Ferramentas para a Miss&atilde;o Conval./Rest./Lic. comp./LTS/AO</p>
+      <h1 id="auth-title">Acesso restrito</h1>
+      <form id="authForm">
+        <label class="field">
+          <span>Senha</span>
+          <input id="authPassword" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="primary-button auth-button" type="submit">Entrar</button>
+        <p class="status auth-status" id="authStatus" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <main class="app-shell">
+    <header class="app-heading">
+      <div class="app-logo-left" aria-label="Logotipo 1 Cia Es">
+        <img src="1cia.png" alt="1 Cia Es">
+      </div>
+      <div class="app-title-block">
+        <h1>Ferramentas para a Miss&atilde;o Conval./Rest./Lic. comp./LTS/AO</h1>
+        <div class="title-actions">
+          <a
+            class="sheet-link"
+            href="https://docs.google.com/spreadsheets/d/1zImqwbWB0Ku0Q4oRRZf2FMc63ivMLPvbWW_xhVpWUxQ/edit?gid=608261578#gid=608261578"
+            target="_blank"
+            rel="noreferrer"
+          >Link para a planilha</a>
+        </div>
+      </div>
+      <div class="app-logos" aria-label="Logotipos">
+        <img src="logo_APMBB.png" alt="Academia Barro Branco">
+        <img src="logoPM.png" alt="Policia Militar de Sao Paulo">
+      </div>
+    </header>
+
+    <section class="workspace" aria-labelledby="memo-title">
+      <header class="topbar">
+        <div>
+          <h1 id="memo-title">Gerar Memorando HTML</h1>
+          <p>Carregue a planilha e gere um memorando no mesmo formato do modelo HTML.</p>
+        </div>
+      </header>
+
+      <div class="memo-grid">
+        <section class="memo-panel" aria-label="Arquivos do memorando">
+          <h2>Arquivos</h2>
+
+          <label class="file-card">
+            <span>Planilha .xlsx</span>
+            <input id="xlsxInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            <strong id="xlsxName">Nenhuma planilha selecionada</strong>
+          </label>
+
+        </section>
+
+        <aside class="settings-panel memo-actions" aria-label="Geracao do memorando">
+          <h2>Memorando</h2>
+
+          <label class="field">
+            <span>Nome do arquivo</span>
+            <input id="memoFileName" type="text" value="Memorando_gerado.html">
+          </label>
+
+          <button class="primary-button" id="generateMemoButton" type="button" disabled>
+            Gerar Memorando HTML
+          </button>
+
+          <p class="status" id="memoStatus" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="workspace pdf-workspace" aria-labelledby="despacho-title">
+      <header class="topbar">
+        <div>
+          <h1 id="despacho-title">Gerador do Despacho Geral</h1>
+          <p>Carregue a planilha e o modelo HTML para montar a lista de processos.</p>
+        </div>
+      </header>
+
+      <div class="memo-grid">
+        <section class="memo-panel" aria-label="Arquivos do despacho geral">
+          <h2>Arquivos</h2>
+
+          <label class="file-card">
+            <span>Planilha .xlsx</span>
+            <input id="despachoXlsxInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            <strong id="despachoXlsxName">Nenhuma planilha selecionada</strong>
+          </label>
+
+        </section>
+
+        <aside class="settings-panel memo-actions" aria-label="Geracao do despacho geral">
+          <h2>Despacho</h2>
+
+          <label class="field">
+            <span>Nome do arquivo</span>
+            <input id="despachoFileName" type="text" value="despacho_geral.html">
+          </label>
+
+          <button class="primary-button" id="generateDespachoButton" type="button" disabled>
+            Gerar Despacho Geral
+          </button>
+
+          <p class="status" id="despachoStatus" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="workspace pdf-workspace" aria-labelledby="controle-title">
+      <header class="topbar">
+        <div>
+          <h1 id="controle-title">Gerador de Controle HTML</h1>
+          <p>Selecione a planilha e gere o controle preenchido em HTML.</p>
+        </div>
+      </header>
+
+      <div class="memo-grid">
+        <section class="memo-panel" aria-label="Arquivos do controle">
+          <h2>Arquivos</h2>
+
+          <label class="file-card">
+            <span>Planilha .xlsx</span>
+            <input id="controleXlsxInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            <strong id="controleXlsxName">Nenhuma planilha selecionada</strong>
+          </label>
+
+        </section>
+
+        <aside class="settings-panel memo-actions" aria-label="Geracao do controle">
+          <h2>Controle</h2>
+
+          <label class="field">
+            <span>Planilha interna</span>
+            <select id="controleSheet">
+              <option value="0">Planilha I</option>
+              <option value="1">Planilha II</option>
+              <option value="2">Planilha III</option>
+              <option value="3">Planilha IV</option>
+              <option value="4">Planilha V</option>
+              <option value="5">Planilha VI</option>
+              <option value="6">Planilha VII</option>
+              <option value="7">Planilha VIII</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Nome do arquivo HTML</span>
+            <input id="controleFileName" type="text" value="controle_preenchido_planilha_I">
+          </label>
+
+          <button class="primary-button" id="generateControleHtmlButton" type="button" disabled>
+            Gerar Controle
+          </button>
+
+          <p class="status" id="controleStatus" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="workspace pdf-workspace" aria-labelledby="unificador-controle-title">
+      <header class="topbar">
+        <div>
+          <h1 id="unificador-controle-title">Unificador de Controles HTML</h1>
+          <p>Reuna dois ou mais controles HTML em um unico arquivo, com apenas um cabecalho, uma tabela consolidada e uma legenda.</p>
+        </div>
+      </header>
+
+      <div class="memo-grid">
+        <section class="memo-panel" aria-label="Arquivos HTML para unificacao">
+          <h2>Arquivos</h2>
+
+          <label class="file-card">
+            <span>Controles .html</span>
+            <input id="unificadorHtmlInput" type="file" accept=".html,.htm,text/html" multiple>
+            <strong id="unificadorHtmlName">Nenhum arquivo selecionado</strong>
+          </label>
+
+          <div class="selected-files" id="unificadorHtmlList" aria-live="polite"></div>
+        </section>
+
+        <aside class="settings-panel memo-actions" aria-label="Unificacao de controles HTML">
+          <h2>Controle unificado</h2>
+
+          <label class="field">
+            <span>Nome do arquivo HTML</span>
+            <input id="unificadorFileName" type="text" value="controle_html_unificado">
+          </label>
+
+          <button class="primary-button" id="generateUnificadorButton" type="button" disabled>
+            Unificar Controles HTML
+          </button>
+
+          <p class="status" id="unificadorStatus" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="workspace pdf-workspace" aria-labelledby="despacho-pelotoes-title">
+      <header class="topbar">
+        <div>
+          <h1 id="despacho-pelotoes-title">Gerador de Despacho por Pelot&otilde;es</h1>
+          <p>Selecione a planilha e gere o despacho HTML com os afastamentos do pelot&atilde;o escolhido.</p>
+        </div>
+      </header>
+
+      <div class="memo-grid">
+        <section class="memo-panel" aria-label="Arquivos do despacho por pelot&otilde;es">
+          <h2>Arquivos</h2>
+
+          <label class="file-card">
+            <span>Planilha .xlsx</span>
+            <input id="pelotaoXlsxInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            <strong id="pelotaoXlsxName">Nenhuma planilha selecionada</strong>
+          </label>
+
+        </section>
+
+        <aside class="settings-panel memo-actions" aria-label="Gera&ccedil;&atilde;o do despacho por pelot&otilde;es">
+          <h2>Despacho</h2>
+
+          <label class="field">
+            <span>Planilha interna</span>
+            <select id="pelotaoSheet">
+              <option value="0">Planilha I</option>
+              <option value="1">Planilha II</option>
+              <option value="2">Planilha III</option>
+              <option value="3">Planilha IV</option>
+              <option value="4">Planilha V</option>
+              <option value="5">Planilha VI</option>
+              <option value="6">Planilha VII</option>
+              <option value="7">Planilha VIII</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Nome do arquivo</span>
+            <input id="pelotaoFileName" type="text" value="despacho_por_pelotao_planilha_I">
+          </label>
+
+          <button class="primary-button" id="generatePelotaoButton" type="button" disabled>
+            Gerar Despacho por Pelot&atilde;o
+          </button>
+
+          <p class="status" id="pelotaoStatus" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="workspace pdf-workspace" aria-labelledby="unificador-despacho-title">
+      <header class="topbar">
+        <div>
+          <h1 id="unificador-despacho-title">Mesclador de Despachos por Pelot&atilde;o</h1>
+          <p>Reuna dois ou mais despachos HTML em um unico documento, preservando o formato do primeiro arquivo.</p>
+        </div>
+      </header>
+
+      <div class="memo-grid">
+        <section class="memo-panel" aria-label="Despachos HTML para mesclagem">
+          <h2>Arquivos</h2>
+
+          <label class="file-card">
+            <span>Despachos .html</span>
+            <input id="despachoUnificadorHtmlInput" type="file" accept=".html,.htm,text/html" multiple>
+            <strong id="despachoUnificadorHtmlName">Nenhum arquivo selecionado</strong>
+          </label>
+
+          <div class="selected-files" id="despachoUnificadorHtmlList" aria-live="polite"></div>
+        </section>
+
+        <aside class="settings-panel memo-actions" aria-label="Mesclagem dos despachos por pelotao">
+          <h2>Despacho unificado</h2>
+
+          <label class="field">
+            <span>Nome do arquivo HTML</span>
+            <input id="despachoUnificadorFileName" type="text" value="despacho_pelotoes_unificado">
+          </label>
+
+          <button class="primary-button" id="generateDespachoUnificadorButton" type="button" disabled>
+            Mesclar Despachos HTML
+          </button>
+
+          <p class="status" id="despachoUnificadorStatus" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="workspace pdf-workspace" aria-labelledby="despacho-oficial-title">
+      <header class="topbar">
+        <div>
+          <h1 id="despacho-oficial-title">Gerador de Despacho Sr. Oficial da Miss&atilde;o ao Sr. Cmt de Cia</h1>
+          <p>Carregue a planilha Excel para preencher e baixar o despacho em HTML.</p>
+        </div>
+      </header>
+
+      <div class="memo-grid">
+        <section class="memo-panel" aria-label="Planilha do despacho do oficial da missao">
+          <h2>Arquivo</h2>
+
+          <label class="file-card">
+            <span>Planilha .xlsx</span>
+            <input id="despachoOficialXlsxInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            <strong id="despachoOficialXlsxName">Nenhuma planilha selecionada</strong>
+          </label>
+        </section>
+
+        <aside class="settings-panel memo-actions" aria-label="Geracao do despacho do oficial da missao">
+          <h2>Despacho preenchido</h2>
+
+          <label class="field">
+            <span>Nome do arquivo HTML</span>
+            <input id="despachoOficialFileName" type="text" value="despacho_oficial_missao_ao_cmt_cia">
+          </label>
+
+          <button class="primary-button" id="generateDespachoOficialButton" type="button" disabled>
+            Gerar e Baixar Despacho HTML
+          </button>
+
+          <p class="status" id="despachoOficialStatus" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="workspace pdf-workspace" aria-labelledby="app-title">
+      <header class="topbar">
+        <div>
+          <h1 id="app-title">Unir fotos em PDF</h1>
+          <p>Monte um PDF com fotos de documentos direto no navegador.</p>
+        </div>
+        <button class="ghost-button" id="clearButton" type="button">Limpar</button>
+      </header>
+
+      <label class="drop-zone" id="dropZone">
+        <input id="fileInput" type="file" accept="image/*" multiple>
+        <span class="drop-icon" aria-hidden="true">+</span>
+        <strong>Adicionar fotos</strong>
+        <span>Arraste imagens para ca ou clique para selecionar.</span>
+      </label>
+
+      <div class="content-grid">
+        <section class="photo-panel" aria-label="Fotos selecionadas">
+          <div class="panel-heading">
+            <h2>Paginas</h2>
+            <span id="photoCount">0 fotos</span>
+          </div>
+          <ol class="photo-list" id="photoList"></ol>
+          <div class="empty-state" id="emptyState">
+            Nenhuma foto adicionada ainda.
+          </div>
+        </section>
+
+        <aside class="settings-panel" aria-label="Configuracoes do PDF">
+          <h2>PDF</h2>
+
+          <label class="field">
+            <span>Nome do arquivo</span>
+            <input id="pdfName" type="text" value="documentos_unidos.pdf">
+          </label>
+
+          <label class="field">
+            <span>Tamanho da pagina</span>
+            <select id="pageSize">
+              <option value="a4">A4</option>
+              <option value="letter">Carta</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Margem</span>
+            <select id="marginSize">
+              <option value="24">Pequena</option>
+              <option value="42">Media</option>
+              <option value="64">Grande</option>
+              <option value="0" selected>Sem margem</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Qualidade da imagem</span>
+            <input id="quality" type="range" min="60" max="95" value="95">
+            <output id="qualityValue">95%</output>
+          </label>
+
+          <button class="primary-button" id="generateButton" type="button" disabled>
+            Gerar PDF
+          </button>
+
+          <p class="status" id="status" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="workspace pdf-workspace download-workspace" aria-labelledby="ao-title">
+      <header class="topbar">
+        <div>
+          <h1 id="ao-title">Download de modelo de AO</h1>
+          <p>Baixe o modelo de Atestado de Origem em Word.</p>
+        </div>
+        <a
+          class="primary-link"
+          href="modelos/Atestado_de_Origem_AO.docx"
+          download="Atestado_de_Origem_AO.docx"
+        >Baixar modelo</a>
+      </header>
+    </section>
+
+    <footer class="app-footer">
+      <p>v2.3 BETA - Otimizada | Powered by: CAD PM Higor Marques</p>
+      <p>
+        Problemas? Reporte
+        <a class="whatsapp-link" href="https://wa.me/5522981795353" target="_blank" rel="noreferrer">
+          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+            <path d="M12.04 2.5a9.4 9.4 0 0 0-8.1 14.17L2.75 21.5l4.95-1.16a9.4 9.4 0 1 0 4.34-17.84Zm0 1.72a7.68 7.68 0 1 1-3.78 14.36l-.28-.16-2.76.65.66-2.66-.18-.29A7.68 7.68 0 0 1 12.04 4.22Zm-3.3 3.9c-.18 0-.47.07-.72.34-.25.28-.95.93-.95 2.25s.98 2.61 1.11 2.79c.14.18 1.9 3.05 4.72 4.15 2.34.92 2.82.74 3.33.69.51-.05 1.65-.67 1.88-1.32.23-.65.23-1.21.16-1.33-.07-.12-.25-.19-.53-.33-.28-.14-1.65-.81-1.9-.9-.26-.1-.44-.14-.63.14-.18.28-.72.9-.88 1.09-.16.18-.32.21-.6.07-.28-.14-1.18-.44-2.25-1.39-.83-.74-1.39-1.66-1.55-1.94-.16-.28-.02-.43.12-.57.13-.13.28-.32.42-.49.14-.16.18-.28.28-.46.09-.18.05-.35-.03-.49-.07-.14-.63-1.52-.86-2.08-.23-.55-.46-.47-.63-.48h-.53Z"/>
+          </svg>
+          +5522981795353
+        </a>
+      </p>
+    </footer>
+  </main>
+
+  <template id="photoTemplate">
+    <li class="photo-item" draggable="true">
+      <div class="thumb-wrap">
+        <img alt="">
+      </div>
+      <div class="photo-meta">
+        <strong class="photo-name"></strong>
+        <span class="photo-info"></span>
+      </div>
+      <div class="photo-actions">
+        <button type="button" data-action="up" title="Subir">↑</button>
+        <button type="button" data-action="down" title="Descer">↓</button>
+        <button type="button" data-action="rotate" title="Girar">↻</button>
+        <button type="button" data-action="remove" title="Remover">×</button>
+      </div>
+    </li>
+  </template>
+
+  <script src="unificador_controles.js?v=1.1.1"></script>
+  <script src="unificador_despachos.js?v=1.1.1"></script>
+  <script src="app.js?v=2.8.1"></script>
+</body>
+</html>

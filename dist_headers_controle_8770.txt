@@ -1,0 +1,7 @@
+HTTP/1.0 200 OK
+Server: SimpleHTTP/0.6 Python/3.12.13
+Date: Tue, 09 Jun 2026 19:18:46 GMT
+Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+Content-Disposition: attachment; filename*=UTF-8''controle_preenchido.docx
+Content-Length: 82403
+
