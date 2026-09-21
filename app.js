@@ -599,54 +599,64 @@ function getSheetRomanSuffix(value) {
   return romanSheets[sheetIndex] || "I";
 }
 
-async function readMemoTemplate() {
-  try {
-    const response = await fetch("modelos/Memorando.html");
-    if (!response.ok) throw new Error("Modelo padrao nao encontrado.");
-    return response.text();
-  } catch (error) {
-    throw new Error("Nao foi possivel carregar o modelo interno. Abra o app pelo localhost ou GitHub Pages.");
-  }
+function internalTemplateUrls(fileName) {
+  const pageUrl = new URL(document.baseURI);
+  const localUrl = new URL(`modelos/${fileName}`, pageUrl);
+  const alternativeUrl = pageUrl.pathname.includes("/app_navegador/")
+    ? new URL(`../modelos/${fileName}`, pageUrl)
+    : new URL(`app_navegador/modelos/${fileName}`, pageUrl);
+
+  return [...new Set([localUrl.href, alternativeUrl.href])];
 }
 
-async function readDespachoTemplate() {
-  try {
-    const response = await fetch("modelos/Despacho_Geral.html");
-    if (!response.ok) throw new Error("Modelo Despacho_Geral.html nao encontrado.");
-    return response.text();
-  } catch (error) {
-    throw new Error("Nao foi possivel carregar o modelo interno do despacho. Abra o app pelo localhost ou GitHub Pages.");
+async function readInternalTemplate(fileName, label) {
+  const failures = [];
+
+  for (const url of internalTemplateUrls(fileName)) {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        failures.push(`${response.status} em ${url}`);
+        continue;
+      }
+
+      const template = await response.text();
+      const looksLikeDocumentModel =
+        template.length > 10000 &&
+        /<(?:html|body)\b/i.test(template) &&
+        !/id=["']authGate["']/i.test(template);
+
+      if (looksLikeDocumentModel) return template;
+      failures.push(`conteudo inesperado em ${url}`);
+    } catch (error) {
+      failures.push(`${error?.message || "falha de rede"} em ${url}`);
+    }
   }
+
+  console.error(`Falha ao carregar ${label}:`, failures);
+  throw new Error(
+    `Nao foi possivel carregar o modelo interno ${label}. Atualize a pagina e tente novamente.`
+  );
 }
 
-async function readControleTemplate() {
-  try {
-    const response = await fetch("modelos/Controle.html");
-    if (!response.ok) throw new Error("Modelo Controle.html nao encontrado.");
-    return response.text();
-  } catch (error) {
-    throw new Error("Nao foi possivel carregar o modelo Controle.html. Abra o app pelo localhost ou GitHub Pages.");
-  }
+function readMemoTemplate() {
+  return readInternalTemplate("Memorando.html", "do memorando");
 }
 
-async function readPelotaoTemplate() {
-  try {
-    const response = await fetch("modelos/Despacho_por_pelotoes.html");
-    if (!response.ok) throw new Error("Modelo Despacho_por_pelotoes.html nao encontrado.");
-    return response.text();
-  } catch (error) {
-    throw new Error("Nao foi possivel carregar o modelo interno do despacho por pelotoes. Abra o app pelo localhost.");
-  }
+function readDespachoTemplate() {
+  return readInternalTemplate("Despacho_Geral.html", "do despacho geral");
 }
 
-async function readDespachoOficialTemplate() {
-  try {
-    const response = await fetch("modelos/Despacho_Oficial_Missao_Cmt_Cia.html");
-    if (!response.ok) throw new Error("Modelo do despacho do oficial da missao nao encontrado.");
-    return response.text();
-  } catch (error) {
-    throw new Error("Nao foi possivel carregar o modelo interno do despacho do oficial da missao.");
-  }
+function readControleTemplate() {
+  return readInternalTemplate("Controle.html", "do controle");
+}
+
+function readPelotaoTemplate() {
+  return readInternalTemplate("Despacho_por_pelotoes.html", "do despacho por pelotao");
+}
+
+function readDespachoOficialTemplate() {
+  return readInternalTemplate("Despacho_Oficial_Missao_Cmt_Cia.html", "do despacho do oficial da missao");
 }
 
 function validateDespachoOficialCells(cells) {
