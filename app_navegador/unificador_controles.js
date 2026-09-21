@@ -56,68 +56,142 @@
     }
   }
 
-  function extractResponsibleCadet(doc) {
-    const roleParagraph = Array.from(doc.querySelectorAll("p")).find((paragraph) =>
-      normalize(paragraph.textContent).includes("CAD PM - RESP. RESTR./CONVAL./LTS DO"),
-    );
-    if (!roleParagraph) return { name: "", heading: null, roleParagraph: null };
-
-    let heading = roleParagraph.previousElementSibling;
-    while (heading && heading.tagName !== "H1") heading = heading.previousElementSibling;
-    if (!heading) return { name: "", heading: null, roleParagraph };
-
-    const names = heading.textContent
+  function splitSignatureColumns(element) {
+    return String(element?.textContent || "")
       .split(/(?:\u00a0[ \t]*){2,}/)
       .map((value) => value.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim())
       .filter(Boolean);
-
-    return { name: names[0] || "", heading, roleParagraph };
   }
 
-  function platoonPriority(label) {
-    const match = String(label || "").match(
-      /(\d+)\s*(?:º|°|o)?\s*(?:CFO)?\s*["“”']?\s*([A-Z])\b/i,
-    );
-    if (!match) return Number.NEGATIVE_INFINITY;
-    const number = Number(match[1]);
-    const letter = match[2].toUpperCase().charCodeAt(0) - 65;
-    return number * 100 - letter;
+  function signatureCategory(role) {
+    const value = normalize(role);
+    if (value.includes("CAD PM") && value.includes("CFO")) return "cadet";
+    if (/\bCAP(?:ITAO)? PM\b/.test(value)) return "captain";
+    if (/\bTEN(?:ENTE)? PM\b/.test(value)) return "lieutenant";
+    return "";
   }
 
-  function selectMostSeniorPlatoon(sources) {
-    return sources.reduce((selected, current) =>
-      platoonPriority(current.label) > platoonPriority(selected.label) ? current : selected,
-    );
+  function findSignatureDate(doc) {
+    return Array.from(doc.querySelectorAll("p")).find((paragraph) => {
+      const value = normalize(paragraph.textContent);
+      return value.includes("SAO PAULO") && value.includes("DATA DA ASSINATURA DIGITAL");
+    });
   }
 
-  function replaceTextInElement(element, search, replacement) {
-    if (!element || !search || search === replacement) return false;
-    const walker = element.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-    let textNode = walker.nextNode();
-    while (textNode) {
-      if ((textNode.nodeValue || "").includes(search)) {
-        textNode.nodeValue = textNode.nodeValue.replace(search, replacement);
-        return true;
+  function findLastTableBefore(element) {
+    if (!element) return null;
+    return Array.from(element.ownerDocument.querySelectorAll("table"))
+      .filter((table) => table.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .at(-1) || null;
+  }
+
+  function extractSignatures(doc, sourceName, sourceLabel) {
+    const dateParagraph = findSignatureDate(doc);
+    const lastTable = findLastTableBefore(dateParagraph);
+    if (!dateParagraph || !lastTable) {
+      throw new Error(`${sourceName}: nao encontrei a area de assinaturas do controle.`);
+    }
+
+    const region = [];
+    let element = lastTable.nextElementSibling;
+    while (element && element !== dateParagraph) {
+      region.push(element);
+      element = element.nextElementSibling;
+    }
+
+    const signatures = [];
+    for (let index = 0; index < region.length; index += 1) {
+      const roles = splitSignatureColumns(region[index]).filter((value) => signatureCategory(value));
+      if (!roles.length) continue;
+
+      let nameColumns = [];
+      for (let previous = index - 1; previous >= 0; previous -= 1) {
+        const candidate = splitSignatureColumns(region[previous]);
+        if (!candidate.length || candidate.some((value) => signatureCategory(value))) continue;
+        nameColumns = candidate;
+        break;
       }
-      textNode = walker.nextNode();
+
+      roles.forEach((role, roleIndex) => {
+        const name = nameColumns[roleIndex] || (roles.length === 1 ? nameColumns.at(-1) : "");
+        if (name) {
+          signatures.push({
+            name,
+            role,
+            category: signatureCategory(role),
+            sourceLabel,
+          });
+        }
+      });
     }
-    return false;
+
+    if (!signatures.some((signature) => signature.category === "cadet")) {
+      throw new Error(`${sourceName}: nao encontrei a assinatura do cadete responsavel.`);
+    }
+    return signatures;
   }
 
-  function applyResponsibleCadet(model, selected) {
-    if (!selected.responsible.name) {
-      throw new Error(`Nao encontrei o nome do cadete responsavel no arquivo ${selected.name}.`);
-    }
-    if (!model.responsible.heading || !model.responsible.roleParagraph) {
-      throw new Error("Nao encontrei a assinatura do cadete responsavel no primeiro arquivo.");
+  function cadetCourseNumber(signature) {
+    const value = `${signature.role} ${signature.sourceLabel}`;
+    const match = value.match(/([123])\s*(?:º|°|o)?\s*CFO\b/i);
+    return match ? Number(match[1]) : 99;
+  }
+
+  function signaturePriority(signature) {
+    if (signature.category === "cadet") return cadetCourseNumber(signature) * 100;
+    if (signature.category === "lieutenant") return 400;
+    if (signature.category === "captain") return 500;
+    return 900;
+  }
+
+  function consolidateSignatures(sources) {
+    const unique = new Map();
+    for (const source of sources) {
+      for (const signature of source.signatures) {
+        const key = `${normalize(signature.name)}|${normalize(signature.role)}`;
+        if (!unique.has(key)) unique.set(key, signature);
+      }
     }
 
-    replaceTextInElement(
-      model.responsible.heading,
-      model.responsible.name,
-      selected.responsible.name,
+    return Array.from(unique.values()).sort((left, right) =>
+      signaturePriority(left) - signaturePriority(right)
+      || normalize(left.sourceLabel).localeCompare(normalize(right.sourceLabel), "pt-BR")
+      || normalize(left.name).localeCompare(normalize(right.name), "pt-BR"),
     );
-    replaceTextInElement(model.responsible.roleParagraph, model.label, selected.label);
+  }
+
+  function rebuildSignatureBlock(doc, signatures) {
+    const dateParagraph = findSignatureDate(doc);
+    const lastTable = findLastTableBefore(dateParagraph);
+    if (!dateParagraph || !lastTable) {
+      throw new Error("Nao foi possivel reconstruir a area de assinaturas.");
+    }
+
+    let element = lastTable.nextElementSibling;
+    while (element && element !== dateParagraph) {
+      const current = element;
+      element = element.nextElementSibling;
+      current.remove();
+    }
+
+    const container = doc.createElement("div");
+    container.id = "assinaturas-controle-unificado";
+    for (const signature of signatures) {
+      const item = doc.createElement("div");
+      item.className = "assinatura-controle-unificado";
+
+      const name = doc.createElement("p");
+      name.className = "assinatura-controle-nome";
+      name.textContent = signature.name;
+
+      const role = doc.createElement("p");
+      role.className = "assinatura-controle-funcao";
+      role.textContent = signature.role;
+
+      item.append(name, role);
+      container.append(item);
+    }
+    dateParagraph.before(container);
   }
 
   function replaceMainHeaderLabel(headerRow) {
@@ -165,13 +239,14 @@
         throw new Error(`${source.name}: a tabela principal nao possui registros.`);
       }
 
+      const label = extractSourceLabel(doc, source.name);
       return {
         ...source,
         doc,
         mainTable,
         rows,
-        label: extractSourceLabel(doc, source.name),
-        responsible: extractResponsibleCadet(doc),
+        label,
+        signatures: extractSignatures(doc, source.name, label),
       };
     });
 
@@ -185,7 +260,7 @@
     const labels = [];
     const mergedContent = [];
     let recordCount = 0;
-    const selectedResponsible = selectMostSeniorPlatoon(parsed);
+    const signatures = consolidateSignatures(parsed);
 
     for (const source of parsed) {
       if (normalize(source.rows[0].textContent) !== expectedHeader) {
@@ -206,7 +281,7 @@
     modelBody.replaceChildren(header, ...mergedContent);
     model.mainTable.id = "tabela-controle-unificada";
     updateHeading(model.doc, labels);
-    applyResponsibleCadet(model, selectedResponsible);
+    rebuildSignatureBlock(model.doc, signatures);
     model.doc.title = "Controle unificado";
 
     model.doc.querySelector("#unified-table-style")?.remove();
@@ -216,6 +291,30 @@
       #tabela-controle-unificada { break-inside: auto; }
       #tabela-controle-unificada tr { break-inside: avoid; page-break-inside: avoid; }
       #tabela-controle-unificada .pelotao-separador { break-after: avoid; page-break-after: avoid; }
+      #assinaturas-controle-unificado {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 28px;
+        row-gap: 28px;
+        width: 765px;
+        max-width: calc(100% - 1px);
+        margin: 36px 0 24px 1px;
+      }
+      #assinaturas-controle-unificado .assinatura-controle-unificado {
+        min-height: 58px;
+        text-align: left;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      #assinaturas-controle-unificado p {
+        font-family: "Times New Roman", serif;
+        font-size: 12pt;
+        line-height: 1.2;
+        margin: 0;
+        text-align: left;
+      }
+      #assinaturas-controle-unificado .assinatura-controle-nome { font-weight: normal; }
+      #assinaturas-controle-unificado .assinatura-controle-funcao { margin-top: 2px; }
     `;
     model.doc.head.append(style);
 
@@ -229,8 +328,9 @@
     return {
       html: `<!doctype html>\n${model.doc.documentElement.outerHTML}`,
       recordCount,
-      responsibleCadet: selectedResponsible.responsible.name,
-      responsiblePlatoon: selectedResponsible.label,
+      signatureCount: signatures.length,
+      responsibleCadet: signatures.find((signature) => signature.category === "cadet")?.name || "",
+      responsiblePlatoon: signatures.find((signature) => signature.category === "cadet")?.sourceLabel || "",
     };
   }
 

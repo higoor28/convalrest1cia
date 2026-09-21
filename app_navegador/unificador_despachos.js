@@ -4,7 +4,7 @@
   const PARAGRAPH_CLASS = "Texto_Justificado_Recuo_Primeira_Linha";
   const MAIN_ITEM_PATTERN = /^1\.(\d+)\.?\s+CAD PM\b/i;
   const PLATOON_PATTERN = /([1-9]\d*)\s*(?:º|°|o)?\s*CFO\s*["“”']?\s*([A-Z])\s*["“”']?/i;
-  const RESPONSIBLE_ROLE_PATTERN = /Cad PM\s*-\s*Resp\.\s*Restr\.\/Conval\.\/LTS(?:\s+do\s+\d+\s*(?:º|°|o)?\s*CFO\s*["“”']?\s*[A-Z]\s*["“”']?)?/i;
+  const RESPONSIBLE_ROLE_PATTERN = /Cad PM\s*-?\s*Resp\.\s*Restr\.\/Conval\.\/LTS(?:\s+do\s+\d+\s*(?:º|°|o)?\s*CFO\s*["“”']?\s*[A-Z]\s*["“”']?)?/i;
 
   function unify(sources) {
     validateSources(sources);
@@ -17,7 +17,7 @@
         responsible: extractResponsible(doc, source.name),
       };
     });
-    const selectedResponsible = selectOldestResponsible(parsedSources);
+    const signatures = consolidateSignatures(parsedSources);
     const filledGroups = [];
     let placeholderGroup = null;
 
@@ -60,17 +60,19 @@
       });
     });
 
-    applyUnifiedIdentification(model, parsedSources[0].responsible, selectedResponsible);
+    applyUnifiedIdentification(model);
+    rebuildSignatureBlock(model, parsedSources[0].responsible, signatures);
     if (model.title) model.title = "Despacho por pelotoes unificado";
-    validateResult(model, finalGroups.length, selectedResponsible);
+    validateResult(model, finalGroups.length, signatures);
 
     return {
       html: `<!doctype html>\n${model.documentElement.outerHTML}`,
       filledCount: filledGroups.length,
       totalCount: finalGroups.length,
       placeholderKept: Boolean(placeholderGroup),
-      responsibleCadet: selectedResponsible.cadetName,
-      responsiblePlatoon: selectedResponsible.platoon.label,
+      signatureCount: signatures.length,
+      responsibleCadet: signatures[0]?.cadetName || "",
+      responsiblePlatoon: signatures[0]?.platoon.label || "",
     };
   }
 
@@ -142,7 +144,7 @@
     let roleIndex = -1;
 
     for (let index = paragraphs.length - 1; index >= 0; index -= 1) {
-      if (/^Cad PM\s*-\s*Resp\.\s*Restr\.\/Conval\.\/LTS\s+do\s+/i.test(normalizedText(paragraphs[index]))) {
+      if (/^Cad PM\s*-?\s*Resp\.\s*Restr\.\/Conval\.\/LTS\s+do\s+/i.test(normalizedText(paragraphs[index]))) {
         roleIndex = index;
         break;
       }
@@ -172,6 +174,7 @@
 
     return {
       cadetName: normalizedText(nameParagraph),
+      roleText: normalizedText(roleParagraph),
       nameParagraph,
       roleParagraph,
       platoon: {
@@ -182,23 +185,28 @@
     };
   }
 
-  function selectOldestResponsible(parsedSources) {
-    return parsedSources
-      .map((source, sourceIndex) => ({ ...source.responsible, sourceIndex }))
-      .sort((first, second) => {
-        const numberDifference = second.platoon.number - first.platoon.number;
-        if (numberDifference) return numberDifference;
-        const letterDifference = first.platoon.letter.localeCompare(second.platoon.letter, "pt-BR");
-        return letterDifference || first.sourceIndex - second.sourceIndex;
-      })[0];
+  function consolidateSignatures(parsedSources) {
+    const unique = new Map();
+    parsedSources.forEach((source, sourceIndex) => {
+      const signature = { ...source.responsible, sourceIndex };
+      const key = `${normalizeForSearch(signature.cadetName)}|${normalizeForSearch(signature.roleText)}`;
+      if (!unique.has(key)) unique.set(key, signature);
+    });
+
+    return Array.from(unique.values()).sort((first, second) => {
+      const numberDifference = first.platoon.number - second.platoon.number;
+      if (numberDifference) return numberDifference;
+      const letterDifference = first.platoon.letter.localeCompare(second.platoon.letter, "pt-BR");
+      return letterDifference || first.sourceIndex - second.sourceIndex;
+    });
   }
 
-  function applyUnifiedIdentification(model, modelResponsible, selectedResponsible) {
+  function applyUnifiedIdentification(model) {
     const paragraphs = Array.from(model.querySelectorAll("p"));
 
     paragraphs.forEach((paragraph) => {
       const text = normalizedText(paragraph);
-      if (/^(?:Do\s+)?Cad PM\s*-\s*Resp\.\s*Restr\.\/Conval\.\/LTS(?:\s+do\s+|$)/i.test(text)) {
+      if (/^Do\s+Cad PM\s*-?\s*Resp\.\s*Restr\.\/Conval\.\/LTS(?:\s+do\s+|$)/i.test(text)) {
         replaceTextNodes(paragraph, RESPONSIBLE_ROLE_PATTERN, "Cad PM - Resp. Restr./Conval./LTS");
       }
       if (/^Assunto:\s*Afastamentos\s+do\s+/i.test(text)) {
@@ -209,8 +217,61 @@
         );
       }
     });
+  }
 
-    replaceParagraphText(modelResponsible.nameParagraph, selectedResponsible.cadetName);
+  function rebuildSignatureBlock(model, modelResponsible, signatures) {
+    const container = model.createElement("div");
+    container.id = "assinaturas-despachos-unificados";
+
+    signatures.forEach((signature) => {
+      const item = model.createElement("div");
+      item.className = "assinatura-despacho-unificado";
+
+      const name = model.createElement("p");
+      name.className = "assinatura-despacho-nome";
+      name.textContent = signature.cadetName;
+
+      const role = model.createElement("p");
+      role.className = "assinatura-despacho-funcao";
+      role.textContent = signature.roleText;
+
+      item.append(name, role);
+      container.append(item);
+    });
+
+    modelResponsible.nameParagraph.before(container);
+    modelResponsible.nameParagraph.remove();
+    modelResponsible.roleParagraph.remove();
+
+    model.querySelector("#unified-dispatch-signatures-style")?.remove();
+    const style = model.createElement("style");
+    style.id = "unified-dispatch-signatures-style";
+    style.textContent = `
+      #assinaturas-despachos-unificados {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 28px;
+        row-gap: 28px;
+        width: 765px;
+        max-width: calc(100% - 1px);
+        margin: 0 0 24px 1px;
+      }
+      #assinaturas-despachos-unificados .assinatura-despacho-unificado {
+        min-height: 58px;
+        text-align: left;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      #assinaturas-despachos-unificados p {
+        font-family: "Times New Roman", serif;
+        font-size: 12pt;
+        line-height: 1.2;
+        margin: 0;
+        text-align: left;
+      }
+      #assinaturas-despachos-unificados .assinatura-despacho-funcao { margin-top: 2px; }
+    `;
+    model.head.append(style);
   }
 
   function replaceTextNodes(element, pattern, replacement) {
@@ -226,25 +287,6 @@
       textNode = walker.nextNode();
     }
     return replaced;
-  }
-
-  function replaceParagraphText(paragraph, replacement) {
-    const walker = paragraph.ownerDocument.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
-    const textNodes = [];
-    let textNode = walker.nextNode();
-
-    while (textNode) {
-      if (textNode.nodeValue.trim()) textNodes.push(textNode);
-      textNode = walker.nextNode();
-    }
-    if (!textNodes.length) throw new Error("Nao foi possivel atualizar o nome do cadete responsavel.");
-
-    const leadingSpace = textNodes[0].nodeValue.match(/^\s*/)?.[0] || "";
-    const trailingSpace = textNodes.at(-1).nodeValue.match(/\s*$/)?.[0] || "";
-    textNodes[0].nodeValue = `${leadingSpace}${replacement}${trailingSpace}`;
-    textNodes.slice(1).forEach((node) => {
-      node.nodeValue = "";
-    });
   }
 
   function findParagraph(paragraphs, prefix, name) {
@@ -285,7 +327,7 @@
     if (!changed) throw new Error(`Nao foi possivel renumerar o item ${number}.`);
   }
 
-  function validateResult(doc, expectedGroups, selectedResponsible) {
+  function validateResult(doc, expectedGroups, signatures) {
     if (doc.querySelectorAll("html").length !== 1) {
       throw new Error("O despacho final possui uma estrutura HTML invalida.");
     }
@@ -300,7 +342,7 @@
     const allParagraphs = Array.from(doc.querySelectorAll("p"));
     const sender = allParagraphs.find((paragraph) => normalizedText(paragraph).startsWith("Do Cad PM - Resp."));
     const subject = allParagraphs.find((paragraph) => normalizedText(paragraph).startsWith("Assunto:"));
-    const signatureRole = allParagraphs.find((paragraph) => normalizedText(paragraph) === "Cad PM - Resp. Restr./Conval./LTS");
+    const signatureItems = Array.from(doc.querySelectorAll("#assinaturas-despachos-unificados .assinatura-despacho-unificado"));
 
     if (mainItems.length !== expectedGroups) {
       throw new Error(`A validacao encontrou ${mainItems.length} itens, mas eram esperados ${expectedGroups}.`);
@@ -314,19 +356,21 @@
     if (normalizedText(subject) !== "Assunto: Afastamentos dos pelotões da 1ª Cia") {
       throw new Error("O assunto do despacho unificado nao foi atualizado corretamente.");
     }
-    if (!signatureRole) {
-      throw new Error("A funcao do cadete responsavel nao foi atualizada na assinatura.");
+    if (signatureItems.length !== signatures.length) {
+      throw new Error("Nem todas as assinaturas dos despachos foram preservadas.");
     }
 
-    const signatureParagraphs = allParagraphs;
-    const roleIndex = signatureParagraphs.indexOf(signatureRole);
-    let signerName = "";
-    for (let index = roleIndex - 1; index >= 0; index -= 1) {
-      signerName = normalizedText(signatureParagraphs[index]);
-      if (signerName) break;
-    }
-    if (signerName !== selectedResponsible.cadetName) {
-      throw new Error("O nome do cadete mais antigo nao foi aplicado na assinatura.");
+    signatureItems.forEach((item, index) => {
+      const name = normalizedText(item.querySelector(".assinatura-despacho-nome"));
+      const role = normalizedText(item.querySelector(".assinatura-despacho-funcao"));
+      if (name !== signatures[index].cadetName || role !== signatures[index].roleText) {
+        throw new Error("A ordem das assinaturas do despacho ficou incorreta.");
+      }
+    });
+
+    const style = doc.querySelector("#unified-dispatch-signatures-style")?.textContent || "";
+    if (!/grid-template-columns:\s*repeat\(2/.test(style)) {
+      throw new Error("O bloco de assinaturas nao foi configurado em duas colunas.");
     }
   }
 
